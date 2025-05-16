@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db";
 import { NewUser, users } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { eq, is } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 const authRouter = Router();
 
@@ -41,6 +41,45 @@ authRouter.post(
       const [user] = await db.insert(users).values(newUser).returning();
 
       res.status(201).json(user);
+      return;
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      res.status(500).json({ message: "Internal server error" });
+      return;
+    }
+  }
+);
+
+interface logInBody {
+  email: string;
+  password: string;
+}
+authRouter.post(
+  "/logIn",
+  async (req: Request<{}, {}, logInBody>, res: Response) => {
+    try {
+      const { email, password } = req.body;
+
+      // Check if user doesn't exists
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email));
+
+      if (!existingUser) {
+        res.status(400).json({ message: "User doesn't exist" });
+        return;
+      }
+
+      // Hash password
+      const isMatched = await bcrypt.compare(password, existingUser.password);
+
+      if (!isMatched) {
+        res.status(400).json({ message: "Password is not matched" });
+        return;
+      }
+
+      res.status(200).json(existingUser);
       return;
     } catch (error: any) {
       console.error("Signup error:", error);
