@@ -3,6 +3,7 @@ import { db } from "../db";
 import { NewUser, users } from "../db/schema";
 import { eq, is } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 const authRouter = Router();
 
 interface SignUpBody {
@@ -79,7 +80,9 @@ authRouter.post(
         return;
       }
 
-      res.status(200).json(existingUser);
+      const token = jwt.sign({ id: existingUser.id }, "PasswordKey");
+
+      res.status(200).json({ token, ...existingUser });
       return;
     } catch (error: any) {
       console.error("Signup error:", error);
