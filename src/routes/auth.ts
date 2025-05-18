@@ -4,6 +4,7 @@ import { NewUser, users } from "../db/schema";
 import { eq, is } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { AuthRequest, authTokenMiddleWare } from "../middleware/auth";
 const authRouter = Router();
 
 interface SignUpBody {
@@ -92,10 +93,6 @@ authRouter.post(
   }
 );
 
-authRouter.get("/", (req, res) => {
-  res.send("Login Page");
-});
-
 authRouter.post("/tekenIsValid", async (req, res) => {
   /// Get the Header
 
@@ -128,6 +125,21 @@ authRouter.post("/tekenIsValid", async (req, res) => {
 
   if (user) {
     res.status(200).json(user);
+  }
+});
+
+authRouter.get("/", authTokenMiddleWare, async (req: AuthRequest, res) => {
+  try {
+    if (!req.user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.id, req.user));
+
+    res.status(200).json({ token: req.token, ...user });
+  } catch (error) {
+    res.status(200).json(false);
   }
 });
 
